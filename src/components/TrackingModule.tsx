@@ -109,26 +109,30 @@ export function TrackingModule({ bikes, updateBike, addBike, deleteBike, onNavig
 
   // Calculate KPIs
   const soldBikes = bikes.filter((b) => b.status === 'Verkauft');
-  const infraBikes = bikes.filter((b) => b.status === 'Infrastruktur');
   
   const totalUmsatz = soldBikes.reduce((acc, bike) => acc + (bike.sellingPrice || 0), 0);
 
+  // Gesamtgewinn = Cashflow (Alle Einnahmen - Alle Ausgaben)
   const totalProfit = bikes.reduce((acc, bike) => {
     const expenses = bike.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+    let bikeFlow = -bike.purchasePrice - expenses;
     if (bike.status === 'Verkauft') {
-      return acc + ((bike.sellingPrice || 0) - bike.purchasePrice - expenses);
-    } else if (bike.status === 'Infrastruktur') {
-      return acc - (bike.purchasePrice + expenses);
+      bikeFlow += (bike.sellingPrice || 0);
     }
-    return acc;
+    return acc + bikeFlow;
+  }, 0);
+
+  // Stundenlohn = Nur für verkaufte Fahrräder (Gewinn der verkauften / Zeit der verkauften)
+  const soldBikesProfit = soldBikes.reduce((acc, bike) => {
+    const expenses = bike.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+    return acc + ((bike.sellingPrice || 0) - bike.purchasePrice - expenses);
   }, 0);
 
   const totalTimeSeconds = soldBikes.reduce((acc, bike) => acc + bike.timeSpentSeconds, 0);
   const avgHourlyWage = totalTimeSeconds > 0 
-    ? totalProfit / (totalTimeSeconds / 3600) 
+    ? soldBikesProfit / (totalTimeSeconds / 3600) 
     : 0;
 
-  const activeBikes = bikes.filter((b) => b.status !== 'Verkauft' && b.status !== 'Infrastruktur');
   const tiedCapital = bikes.filter(b => b.status !== 'Verkauft').reduce((acc, bike) => {
     const expenses = bike.expenses.reduce((sum, exp) => sum + exp.amount, 0);
     return acc + bike.purchasePrice + expenses;
@@ -214,7 +218,7 @@ export function TrackingModule({ bikes, updateBike, addBike, deleteBike, onNavig
           profit -= exp.amount;
         }
       });
-      if (bike.saleDate && parseISO(bike.saleDate) <= end) {
+      if (bike.status === 'Verkauft' && bike.saleDate && parseISO(bike.saleDate) <= end) {
         profit += (bike.sellingPrice || 0);
       }
     });
@@ -226,13 +230,12 @@ export function TrackingModule({ bikes, updateBike, addBike, deleteBike, onNavig
     let periodTime = 0;
     
     bikes.forEach(bike => {
-      const effectiveDateStr = bike.saleDate || bike.purchaseDate;
-      if (!effectiveDateStr) return;
+      if (bike.status !== 'Verkauft' || !bike.saleDate) return;
       
-      const effectiveDate = parseISO(effectiveDateStr);
+      const effectiveDate = parseISO(bike.saleDate);
       if (isSamePeriod(effectiveDate, period, timeframe)) {
         const expenses = bike.expenses.reduce((sum, exp) => sum + exp.amount, 0);
-        const profit = (bike.sellingPrice || bike.targetSellingPrice || 0) - bike.purchasePrice - expenses;
+        const profit = (bike.sellingPrice || 0) - bike.purchasePrice - expenses;
         
         periodProfit += profit;
         periodTime += bike.timeSpentSeconds;

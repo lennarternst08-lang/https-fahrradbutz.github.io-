@@ -147,6 +147,12 @@ export function WorkshopModule({ bikes, updateBike, activeBikeId, setActiveBikeI
     setExpenseAmount('');
   };
 
+  const handleDeleteExpense = (expenseId: string) => {
+    if (!activeBike) return;
+    const updatedExpenses = activeBike.expenses.filter(exp => exp.id !== expenseId);
+    updateBike(activeBike.id, { expenses: updatedExpenses });
+  };
+
   const handleManualTimeAdjust = () => {
     if (!activeBike || !manualTime) return;
     const minutes = parseInt(manualTime, 10);
@@ -425,9 +431,18 @@ export function WorkshopModule({ bikes, updateBike, activeBikeId, setActiveBikeI
               
               <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
                 {activeBike.expenses.map((exp) => (
-                  <div key={exp.id} className="flex justify-between items-center p-2 rounded bg-slate-800/50 text-sm">
+                  <div key={exp.id} className="flex justify-between items-center p-2 rounded bg-slate-800/50 text-sm group">
                     <span className="text-slate-300 truncate pr-2">{exp.description}</span>
-                    <span className="font-medium text-slate-200 whitespace-nowrap">{formatCurrency(exp.amount)}</span>
+                    <div className="flex items-center space-x-3">
+                      <span className="font-medium text-slate-200 whitespace-nowrap">{formatCurrency(exp.amount)}</span>
+                      <button 
+                        onClick={() => handleDeleteExpense(exp.id)}
+                        className="text-slate-500 hover:text-red-500 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                        title="Löschen"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
                 {activeBike.expenses.length === 0 && (
